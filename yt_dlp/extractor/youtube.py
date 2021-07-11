@@ -14,7 +14,9 @@ import random
 import re
 import time
 import traceback
+import pyduktape
 
+from pytube.cipher import get_throttling_function_code, get_throttling_function_name
 from .common import InfoExtractor, SearchInfoExtractor
 from ..compat import (
     compat_chr,
@@ -2518,6 +2520,23 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 signature = self._decrypt_signature(sc['s'][0], video_id, player_url)
                 sp = try_get(sc, lambda x: x['sp'][0]) or 'signature'
                 fmt_url += '&' + sp + '=' + signature
+            
+            qs = parse_qs(fmt_url)
+            if 'ratebypass' not in qs.keys() and 'n' in qs.keys():
+                if not calculated_n and self._load_player(video_id, player_url):
+                    player_id = self._extract_player_info(player_url)
+                    js = self._code_cache[player_id]
+                    n = qs['n'][0]
+                    self.write_debug(f'Initial n: {n}')
+                    calculated_n = pyduktape.DuktapeContext().eval_js(f'{get_throttling_function_code(js)};'
+                                                                      f'{get_throttling_function_name(js)}("{n}")')
+                    self.write_debug(f'New n: {calculated_n}')
+                parsed = compat_urlparse.urlparse(fmt_url)
+                qs['n'][0] = calculated_n
+                qs = {
+                    k: v[0] for k, v in qs.items()
+                }
+                fmt_url = f'{parsed.scheme}://{parsed.netloc}{parsed.path}?{compat_urllib_parse_urlencode(qs)}'
 
             if itag:
                 itags.append(itag)
