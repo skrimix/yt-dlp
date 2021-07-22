@@ -2486,6 +2486,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             'small', 'medium', 'large', 'hd720', 'hd1080', 'hd1440', 'hd2160', 'hd2880', 'highres'
         ])
         streaming_formats = traverse_obj(streaming_data, (..., ('formats', 'adaptiveFormats'), ...), default=[])
+        calculated_n = None
 
         for fmt in streaming_formats:
             if fmt.get('targetDurationSec') or fmt.get('drmFamilies'):
